@@ -16,13 +16,11 @@ type Page struct {
 	Rows  [][2]string `json:"rows"`
 }
 type GPVs struct {
-	LastId int           `json:"lastId"`
-	Pages  map[int]*Page `json:"pages"`
+	Seen  map[int]struct{} `json:"seen"`
+	Pages map[int]*Page    `json:"pages"`
 }
 
 func Update(gpvs *GPVs) {
-	minId := gpvs.LastId
-
 	newsCollector := colly.NewCollector()
 	newsCollector.OnHTML(":root", func(e *colly.HTMLElement) {
 		id, err := strconv.Atoi(strings.TrimPrefix(e.Request.URL.Path, "/news/"))
@@ -49,10 +47,9 @@ func Update(gpvs *GPVs) {
 			if err != nil {
 				panic(err)
 			}
-			if id > gpvs.LastId {
-				gpvs.LastId = id
-			}
-			if id > minId && strings.Contains(e.Text, "погодинних відключень") {
+			_, ok := gpvs.Seen[id]
+			gpvs.Seen[id] = struct{}{}
+			if !ok && strings.Contains(e.Text, "погодинних відключень") {
 				newsCollector.Visit(e.Request.AbsoluteURL(href))
 			}
 		}

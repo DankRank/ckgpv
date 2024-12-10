@@ -18,10 +18,9 @@ import (
 )
 
 func main() {
-	var minId, shard int
+	var shard int
 	var doFeed, dryRun bool
 	var listenAddr string
-	flag.IntVar(&minId, "min-id", 0, "starting page id")
 	flag.IntVar(&shard, "shard", 0, "shard number")
 	flag.BoolVar(&doFeed, "feed", false, "run a webserver with an atom feed")
 	flag.StringVar(&listenAddr, "listen-addr", ":8091", "(feed) listen address/port")
@@ -29,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	if !doFeed {
-		gpvs := ckgpv.GPVs{LastId: minId, Pages: make(map[int]*ckgpv.Page)}
+		gpvs := ckgpv.GPVs{Seen: make(map[int]struct{}), Pages: make(map[int]*ckgpv.Page)}
 		ckgpv.Update(&gpvs)
 		if shard > 0 {
 			ckgpv.Filter(&gpvs, shard)
@@ -42,7 +41,7 @@ func main() {
 		os.Stdout.Write(bytes)
 	} else {
 		dummyTimestamp := time.Now()
-		gpvs := ckgpv.GPVs{LastId: minId, Pages: make(map[int]*ckgpv.Page)}
+		gpvs := ckgpv.GPVs{Seen: make(map[int]struct{}), Pages: make(map[int]*ckgpv.Page)}
 
 		bytes, err := os.ReadFile("ckgpv-state.json")
 		if err == nil {
