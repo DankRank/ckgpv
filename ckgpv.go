@@ -15,12 +15,9 @@ type Page struct {
 	Title string      `json:"title"`
 	Rows  [][2]string `json:"rows"`
 }
-type GPVs struct {
-	Seen  map[int]struct{} `json:"seen"`
-	Pages map[int]*Page    `json:"pages"`
-}
 
-func Update(gpvs *GPVs) {
+func Update(seen map[int]struct{}) map[int]*Page {
+	pages := make(map[int]*Page)
 	newsCollector := colly.NewCollector()
 	newsCollector.OnHTML(":root", func(e *colly.HTMLElement) {
 		id, err := strconv.Atoi(strings.TrimPrefix(e.Request.URL.Path, "/news/"))
@@ -33,7 +30,7 @@ func Update(gpvs *GPVs) {
 			rows[i][0] = tds[2*i]
 			rows[i][1] = tds[2*i+1]
 		}
-		gpvs.Pages[id] = &Page{
+		pages[id] = &Page{
 			Title: e.ChildText("title"),
 			Rows:  rows,
 		}
@@ -47,18 +44,22 @@ func Update(gpvs *GPVs) {
 			if err != nil {
 				panic(err)
 			}
-			_, ok := gpvs.Seen[id]
-			gpvs.Seen[id] = struct{}{}
+			_, ok := seen[id]
+			if seen != nil {
+				seen[id] = struct{}{}
+			}
 			if !ok && strings.Contains(e.Text, "погодинних відключень") {
 				newsCollector.Visit(e.Request.AbsoluteURL(href))
 			}
 		}
 	})
+
 	homepageCollector.Visit("https://cherkasyoblenergo.com/")
+	return pages
 }
-func Filter(gpvs *GPVs, shard int) {
+func Filter(pages map[int]*Page, shard int) {
 	shardCh := strconv.Itoa(shard) // assume shard < 10
-	for _, page := range gpvs.Pages {
+	for _, page := range pages {
 		page.Rows = slices.DeleteFunc(page.Rows, func(row [2]string) bool {
 			return !strings.Contains(row[1], shardCh)
 		})

@@ -17,6 +17,13 @@ import (
 	"github.com/gorilla/feeds"
 )
 
+type TestOutput struct {
+	Pages map[int]*ckgpv.Page `json:"pages"`
+}
+type FeedState struct {
+	Seen map[int]struct{} `json:"seen"`
+}
+
 func main() {
 	var shard int
 	var doFeed, dryRun bool
@@ -28,33 +35,32 @@ func main() {
 	flag.Parse()
 
 	if !doFeed {
-		gpvs := ckgpv.GPVs{Seen: make(map[int]struct{}), Pages: make(map[int]*ckgpv.Page)}
-		ckgpv.Update(&gpvs)
+		pages := ckgpv.Update(nil)
 		if shard > 0 {
-			ckgpv.Filter(&gpvs, shard)
+			ckgpv.Filter(pages, shard)
 		}
 
-		bytes, err := json.Marshal(&gpvs)
+		bytes, err := json.Marshal(&TestOutput{Pages: pages})
 		if err != nil {
 			panic(err)
 		}
 		os.Stdout.Write(bytes)
 	} else {
 		dummyTimestamp := time.Now()
-		gpvs := ckgpv.GPVs{Seen: make(map[int]struct{}), Pages: make(map[int]*ckgpv.Page)}
+		state := FeedState{Seen: make(map[int]struct{})}
 
 		bytes, err := os.ReadFile("ckgpv-state.json")
 		if err == nil {
-			err = json.Unmarshal(bytes, &gpvs)
+			err = json.Unmarshal(bytes, &state)
 			if err != nil {
 				panic(err)
 			}
 		}
 
 		http.HandleFunc("/feed.xml", func(w http.ResponseWriter, _ *http.Request) {
-			ckgpv.Update(&gpvs)
+			pages := ckgpv.Update(state.Seen)
 			if shard > 0 {
-				ckgpv.Filter(&gpvs, shard)
+				ckgpv.Filter(pages, shard)
 			}
 
 			feed := &feeds.Feed{
@@ -63,8 +69,8 @@ func main() {
 				Updated: dummyTimestamp,
 				Link:    &feeds.Link{Href: "https://cherkasyoblenergo.com/"},
 			}
-			feed.Items = make([]*feeds.Item, 0, len(gpvs.Pages))
-			for i, page := range gpvs.Pages {
+			feed.Items = make([]*feeds.Item, 0, len(pages))
+			for i, page := range pages {
 				id := "https://cherkasyoblenergo.com/news/" + strconv.Itoa(i)
 				feed.Items = append(feed.Items,
 					&feeds.Item{
@@ -80,11 +86,8 @@ func main() {
 			}
 			io.WriteString(w, atom)
 
-			if len(gpvs.Pages) > 0 && !dryRun {
-				// For my uses, I don't need to keep these after they've been retrieved by the client
-				clear(gpvs.Pages)
-
-				bytes, err := json.Marshal(&gpvs)
+			if len(pages) > 0 && !dryRun {
+				bytes, err := json.Marshal(&state)
 				if err != nil {
 					panic(err)
 				}
