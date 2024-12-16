@@ -57,6 +57,10 @@ func Update(seen map[int]struct{}) map[int]*Page {
 	homepageCollector.Visit("https://cherkasyoblenergo.com/")
 	return pages
 }
+
+// format 1: ["14:00-15:00","3, 4 та 5 черги"]
+// format 2: ["4.ІІ","08:00-09:30, 16:30-20:00"]
+
 func Filter(pages map[int]*Page, shard int) {
 	shardCh := strconv.Itoa(shard) // assume shard < 10
 	for _, page := range pages {
@@ -78,6 +82,22 @@ func Summarize(page *Page) string {
 	summary := page.Title
 	for _, s := range fromto {
 		summary += "\n" + s[0] + "-" + s[1]
+	}
+	return summary
+}
+
+func Filter2(pages map[int]*Page, shard string) {
+	shardUk := strings.ReplaceAll(shard, "I", "\u0406")
+	for _, page := range pages {
+		page.Rows = slices.DeleteFunc(page.Rows, func(row [2]string) bool {
+			return row[0] != shard && row[0] != shardUk
+		})
+	}
+}
+func Summarize2(page *Page) string {
+	summary := page.Title
+	for _, s := range page.Rows {
+		summary += "\n" + s[0] + ": " + s[1]
 	}
 	return summary
 }

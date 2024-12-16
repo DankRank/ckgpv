@@ -25,10 +25,10 @@ type FeedState struct {
 }
 
 func main() {
-	var shard int
+	var shard string
 	var doFeed, dryRun bool
 	var listenAddr string
-	flag.IntVar(&shard, "shard", 0, "shard number")
+	flag.StringVar(&shard, "shard", "", "shard number")
 	flag.BoolVar(&doFeed, "feed", false, "run a webserver with an atom feed")
 	flag.StringVar(&listenAddr, "listen-addr", ":8091", "(feed) listen address/port")
 	flag.BoolVar(&dryRun, "dry-run", false, "(feed) don't keep state")
@@ -36,8 +36,8 @@ func main() {
 
 	if !doFeed {
 		pages := ckgpv.Update(nil)
-		if shard > 0 {
-			ckgpv.Filter(pages, shard)
+		if shard != "" {
+			ckgpv.Filter2(pages, shard)
 		}
 
 		bytes, err := json.Marshal(&TestOutput{Pages: pages})
@@ -59,8 +59,8 @@ func main() {
 
 		http.HandleFunc("/feed.xml", func(w http.ResponseWriter, _ *http.Request) {
 			pages := ckgpv.Update(state.Seen)
-			if shard > 0 {
-				ckgpv.Filter(pages, shard)
+			if shard != "" {
+				ckgpv.Filter2(pages, shard)
 			}
 
 			feed := &feeds.Feed{
@@ -75,7 +75,7 @@ func main() {
 				feed.Items = append(feed.Items,
 					&feeds.Item{
 						Id:      id,
-						Title:   ckgpv.Summarize(page),
+						Title:   ckgpv.Summarize2(page),
 						Updated: dummyTimestamp,
 						Link:    &feeds.Link{Href: id, Type: "text/html"},
 					})
