@@ -16,6 +16,21 @@ type Page struct {
 	Rows  [][2]string `json:"rows"`
 }
 
+func isGPVLine(line string) bool {
+	if len(line) > 4 {
+		if line[0] >= '0' && line[0] <= '9' && line[1] == '.' && line[2] >= '0' && line[2] <= '9' && line[3] == ' ' {
+			return true
+		}
+	}
+	return false
+}
+
+func splitGPVLine(line string) [2]string {
+	var arr [2]string
+	copy(arr[:], strings.SplitN(line, " ", 2)[:])
+	return arr
+}
+
 func Update(seen map[int]struct{}) map[int]*Page {
 	pages := make(map[int]*Page)
 	newsCollector := colly.NewCollector()
@@ -24,11 +39,18 @@ func Update(seen map[int]struct{}) map[int]*Page {
 		if err != nil {
 			panic(err)
 		}
+		// tables (old)
 		tds := e.ChildTexts("td")
 		rows := make([][2]string, len(tds)/2)
 		for i := range len(tds) / 2 {
 			rows[i][0] = tds[2*i]
 			rows[i][1] = tds[2*i+1]
+		}
+		// paragraphs
+		for _, p := range e.ChildTexts("p") {
+			if isGPVLine(p) {
+				rows = append(rows, splitGPVLine(p))
+			}
 		}
 		pages[id] = &Page{
 			Title: e.ChildText("title"),
@@ -61,6 +83,8 @@ func Update(seen map[int]struct{}) map[int]*Page {
 
 // format 1: ["14:00-15:00","3, 4 та 5 черги"]
 // format 2: ["4.ІІ","08:00-09:30, 16:30-20:00"]
+// format 3: ["2.2", "09:00 - 13:00, 15:00 - 18:00, 22:00 - 24:00"]
+// (same as 2, but different shard syntax)
 
 func Filter(pages map[int]*Page, shard int) {
 	shardCh := strconv.Itoa(shard) // assume shard < 10
