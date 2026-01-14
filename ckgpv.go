@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Egor
+// Copyright (c) 2024, 2026 Egor
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 package ckgpv
@@ -48,7 +48,8 @@ func Update(seen map[int]struct{}) map[int]*Page {
 			if seen != nil {
 				seen[id] = struct{}{}
 			}
-			if !ok && strings.Contains(e.Text, "погодинних відключень") {
+			// "погодинних відключень" / "погодинних вимкнень"
+			if !ok && strings.Contains(e.Text, "погодинних в") {
 				newsCollector.Visit(e.Request.AbsoluteURL(href))
 			}
 		}
