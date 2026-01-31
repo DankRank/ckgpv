@@ -16,19 +16,17 @@ type Page struct {
 	Rows  [][2]string `json:"rows"`
 }
 
-func isGPVLine(line string) bool {
-	if len(line) > 4 {
-		if line[0] >= '0' && line[0] <= '9' && line[1] == '.' && line[2] >= '0' && line[2] <= '9' && line[3] == ' ' {
-			return true
-		}
-	}
-	return false
+func isDigit(ch byte) bool {
+	return ch >= '0' && ch <= '9'
 }
 
-func splitGPVLine(line string) [2]string {
-	var arr [2]string
-	copy(arr[:], strings.SplitN(line, " ", 2)[:])
-	return arr
+func splitGPVLine(line string) (row [2]string, ok bool) {
+	row[0], row[1], ok = strings.Cut(line, " ")
+	if ok {
+		row[0] = strings.TrimRight(row[0], ":")
+		ok = len(row[0]) == 3 && isDigit(row[0][0]) && row[0][1] == '.' && isDigit(row[0][2])
+	}
+	return
 }
 
 func Update(seen map[int]struct{}) map[int]*Page {
@@ -48,8 +46,8 @@ func Update(seen map[int]struct{}) map[int]*Page {
 		}
 		// paragraphs
 		for _, p := range e.ChildTexts("p") {
-			if isGPVLine(p) {
-				rows = append(rows, splitGPVLine(p))
+			if row, ok := splitGPVLine(p); ok {
+				rows = append(rows, row)
 			}
 		}
 		pages[id] = &Page{
