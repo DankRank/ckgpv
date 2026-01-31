@@ -124,3 +124,13 @@ func Summarize2(page *Page) string {
 	}
 	return summary
 }
+func tabular(times string) string {
+	return strings.ReplaceAll(times, ", ", "\n")
+}
+func Summarize2Tabular(page *Page) string {
+	summary := page.Title
+	for _, s := range page.Rows {
+		summary += "\n" + s[0] + ": " + s[1] + "\n\n" + tabular(s[1])
+	}
+	return summary
+}

@@ -75,7 +75,7 @@ func main() {
 				feed.Items = append(feed.Items,
 					&feeds.Item{
 						Id:      id,
-						Title:   ckgpv.Summarize2(page),
+						Title:   ckgpv.Summarize2Tabular(page),
 						Updated: dummyTimestamp,
 						Link:    &feeds.Link{Href: id, Type: "text/html"},
 					})
