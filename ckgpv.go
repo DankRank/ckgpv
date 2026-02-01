@@ -124,13 +124,50 @@ func Summarize2(page *Page) string {
 	}
 	return summary
 }
-func tabular(times string) string {
-	return strings.ReplaceAll(times, ", ", "\n")
+func interpolate(lines []string, mapping func(string) string, interpolator func(string, string) (bool, string)) (bool, []string) {
+	out := make([]string, 0, len(lines)*2-1)
+	for i := range len(lines) - 1 {
+		if ok, s := interpolator(lines[i], lines[i+1]); ok {
+			out = append(out, mapping(lines[i]), s)
+		} else {
+			return false, nil
+		}
+	}
+	out = append(out, mapping(lines[len(lines)-1]))
+	return true, out
+}
+func parseTime(time string) (bool, string, string, string) {
+	parts := strings.Split(time, " ")
+	if len(parts) == 3 && (parts[1] == "-" || parts[1] == "\u2013") {
+		return true, parts[0], parts[1], parts[2]
+	}
+	return false, "", "", ""
+}
+
+const newMoonWithFace = "\U0001F31A"
+const sunWithFace = "\U0001F31E"
+
+func tabularize(times string) string {
+	lines := strings.Split(times, ", ")
+	ok, nlines := interpolate(lines, func(line string) string {
+		return newMoonWithFace + " " + line
+	}, func(a string, b string) (bool, string) {
+		if ok, _, sep, start := parseTime(a); ok {
+			if ok, end, _, _ := parseTime(b); ok {
+				return true, sunWithFace + " " + start + " " + sep + " " + end
+			}
+		}
+		return false, ""
+	})
+	if ok {
+		lines = nlines
+	}
+	return strings.Join(lines, "\n")
 }
 func Summarize2Tabular(page *Page) string {
 	summary := page.Title
 	for _, s := range page.Rows {
-		summary += "\n" + s[0] + ": " + s[1] + "\n\n" + tabular(s[1])
+		summary += "\n" + s[0] + ": " + s[1] + "\n\n" + tabularize(s[1])
 	}
 	return summary
 }
