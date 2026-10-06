@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/DankRank/ckgpv"
@@ -18,10 +17,10 @@ import (
 )
 
 type TestOutput struct {
-	Pages map[int]*ckgpv.Page `json:"pages"`
+	Pages map[string]*ckgpv.Page `json:"pages"`
 }
 type FeedState struct {
-	Seen map[int]struct{} `json:"seen"`
+	Seen map[string]struct{} `json:"seen"`
 }
 
 func main() {
@@ -47,7 +46,7 @@ func main() {
 		os.Stdout.Write(bytes)
 	} else {
 		dummyTimestamp := time.Now()
-		state := FeedState{Seen: make(map[int]struct{})}
+		state := FeedState{Seen: make(map[string]struct{})}
 
 		bytes, err := os.ReadFile("ckgpv-state.json")
 		if err == nil {
@@ -71,7 +70,7 @@ func main() {
 			}
 			feed.Items = make([]*feeds.Item, 0, len(pages))
 			for i, page := range pages {
-				id := "https://cherkasyoblenergo.com/news/" + strconv.Itoa(i)
+				id := "https://cherkasyoblenergo.com/media/" + i
 				feed.Items = append(feed.Items,
 					&feeds.Item{
 						Id:      id,

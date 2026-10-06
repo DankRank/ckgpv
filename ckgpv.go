@@ -29,11 +29,15 @@ func splitGPVLine(line string) (row [2]string, ok bool) {
 	return
 }
 
-func Update(seen map[int]struct{}) map[int]*Page {
-	pages := make(map[int]*Page)
+func extractId(href string) (string, error) {
+	return strings.TrimSuffix(strings.TrimPrefix(href, "/media/"), "?lang=uk"), nil
+}
+
+func Update(seen map[string]struct{}) map[string]*Page {
+	pages := make(map[string]*Page)
 	newsCollector := colly.NewCollector()
 	newsCollector.OnHTML(":root", func(e *colly.HTMLElement) {
-		id, err := strconv.Atoi(strings.TrimPrefix(e.Request.URL.Path, "/news/"))
+		id, err := extractId(e.Request.URL.Path)
 		if err != nil {
 			panic(err)
 		}
@@ -59,17 +63,17 @@ func Update(seen map[int]struct{}) map[int]*Page {
 	homepageCollector := colly.NewCollector()
 	homepageCollector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		href := e.Attr("href")
-		if strings.HasPrefix(href, "/news/") {
-			id, err := strconv.Atoi(strings.TrimPrefix(href, "/news/"))
+		if strings.HasPrefix(href, "/media/") {
+			id, err := extractId(href)
 			if err != nil {
 				panic(err)
 			}
 			_, ok := seen[id]
-			if seen != nil {
-				seen[id] = struct{}{}
-			}
 			// "погодинних відключень" / "погодинних вимкнень"
 			if !ok && strings.Contains(e.Text, "погодинних в") {
+				if seen != nil {
+					seen[id] = struct{}{}
+				}
 				newsCollector.Visit(e.Request.AbsoluteURL(href))
 			}
 		}
@@ -84,7 +88,7 @@ func Update(seen map[int]struct{}) map[int]*Page {
 // format 3: ["2.2", "09:00 - 13:00, 15:00 - 18:00, 22:00 - 24:00"]
 // (same as 2, but different shard syntax)
 
-func Filter(pages map[int]*Page, shard int) {
+func Filter(pages map[string]*Page, shard int) {
 	shardCh := strconv.Itoa(shard) // assume shard < 10
 	for _, page := range pages {
 		page.Rows = slices.DeleteFunc(page.Rows, func(row [2]string) bool {
@@ -109,7 +113,7 @@ func Summarize(page *Page) string {
 	return summary
 }
 
-func Filter2(pages map[int]*Page, shard string) {
+func Filter2(pages map[string]*Page, shard string) {
 	shardUk := strings.ReplaceAll(shard, "I", "\u0406")
 	for _, page := range pages {
 		page.Rows = slices.DeleteFunc(page.Rows, func(row [2]string) bool {
