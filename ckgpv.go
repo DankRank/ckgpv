@@ -21,6 +21,7 @@ func isDigit(ch byte) bool {
 }
 
 func splitGPVLine(line string) (row [2]string, ok bool) {
+	line = strings.ReplaceAll(line, "\u00a0", " ")
 	row[0], row[1], ok = strings.Cut(line, " ")
 	if ok {
 		row[0] = strings.TrimRight(row[0], ":")
@@ -49,11 +50,11 @@ func Update(seen map[string]struct{}) map[string]*Page {
 			rows[i][1] = tds[2*i+1]
 		}
 		// paragraphs
-		for _, p := range e.ChildTexts("p") {
-			if row, ok := splitGPVLine(p); ok {
+		e.ForEach("p", func(_ int, p *colly.HTMLElement) {
+			if row, ok := splitGPVLine(p.Text); ok {
 				rows = append(rows, row)
 			}
-		}
+		})
 		pages[id] = &Page{
 			Title: e.ChildText("title"),
 			Rows:  rows,
